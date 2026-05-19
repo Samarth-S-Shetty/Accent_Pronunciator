@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Accent Pronunciation</title>
+  <style>
+    body { font-family: sans-serif; max-width: 500px; margin: 60px auto; padding: 0 20px; }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    p { color: #666; margin-bottom: 24px; }
+    input { width: 100%; padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 8px; margin-bottom: 16px; }
+    .buttons { display: flex; gap: 10px; }
+    button { flex: 1; padding: 12px; font-size: 15px; border: none; border-radius: 8px; cursor: pointer; }
+    #btn-us { background: #1d4ed8; color: white; }
+    #btn-uk { background: #15803d; color: white; }
+    #btn-india { background: #b45309; color: white; }
+    #status { margin-top: 16px; color: #555; font-size: 14px; }
+
+    /* 👇 new styles for IPA box */
+    #ipa-box {
+      display: none;
+      margin-top: 20px;
+      padding: 14px 18px;
+      background: #f8f8f8;
+      border-left: 4px solid #6366f1;
+      border-radius: 8px;
+    }
+    #ipa-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+    #ipa-text { font-size: 22px; color: #1e1e2e; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+  <h1>🔊 Accent Pronunciator</h1>
+  <p>Type a word or phrase and hear it in different English accents.</p>
+
+  <input type="text" id="wordInput" placeholder="e.g. Worcestershire, Ngrok, Sam Altman" />
+
+  <div class="buttons">
+    <button id="btn-us" onclick="play('us')">🇺🇸 US English</button>
+    <button id="btn-uk" onclick="play('uk')">🇬🇧 UK English</button>
+    <button id="btn-india" onclick="play('india')">🇦🇺 Australian English</button>
+  </div>
+
+  <div id="status"></div>
+
+  <!-- 👇 new IPA display box -->
+  <div id="ipa-box">
+    <div id="ipa-label">IPA Phonetic Transcription</div>
+    <div id="ipa-text"></div>
+  </div>
+
+  <script>
+    async function play(accent) {
+      const text = document.getElementById('wordInput').value.trim();
+      const status = document.getElementById('status');
+
+      if (!text) {
+        status.textContent = 'Please type a word or phrase first.';
+        return;
+      }
+
+      status.textContent = 'Loading audio...';
+
+      // 👇 fetch IPA and audio at the same time (faster!)
+      const [audioRes, ipaRes] = await Promise.all([
+        fetch('http://localhost:8000/pronounce', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, accent }),
+        }),
+        fetch('http://localhost:8000/ipa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text }),
+        })
+      ]);
+
+      // play audio
+      const blob = await audioRes.blob();
+      const url = URL.createObjectURL(blob);
+      new Audio(url).play();
+      status.textContent = `Playing ${accent.toUpperCase()} accent...`;
+
+      // show IPA
+      const ipaData = await ipaRes.json();
+      document.getElementById('ipa-text').textContent = `/${ipaData.ipa}/`;
+      document.getElementById('ipa-box').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
